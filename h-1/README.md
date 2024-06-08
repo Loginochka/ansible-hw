@@ -36,43 +36,43 @@
 ## Результат выполнения команд
 Задание 1
 
-![Задание 1](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/play_with_test.yml.png)
+![Задание 1](https://github.com/Loginochka/ansible-hw/blob/main/media/play_with_test.yml.png)
 
 Задание 4
 
-![Задание 4](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/play_via_docker.png)
+![Задание 4](https://github.com/Loginochka/ansible-hw/blob/mainmedia/play_via_docker.png)
 
 Задание 6
 
-![Задание 6](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/change_groups_vars.png)
+![Задание 6](https://github.com/Loginochka/ansible-hw/blob/main/media/change_groups_vars.png)
 
 Задание 7
 
-![Задание 7](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/encrypt_vars.png)
+![Задание 7](https://github.com/Loginochka/ansible-hw/blob/main/media/encrypt_vars.png)
 
 Задание 8
 
-![Задание 8](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/play_with_vault.png)
+![Задание 8](https://github.com/Loginochka/ansible-hw/blob/main/media/play_with_vault.png)
 
 Задание 11
 
-![Задание 11](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/play_with_localhost.png)
+![Задание 11](https://github.com/Loginochka/ansible-hw/blob/main/media/play_with_localhost.png)
 
 Задание 1*
 
-![Задание 1*](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/decrypt_vars.png)
+![Задание 1*](https://github.com/Loginochka/ansible-hw/blob/main/media/decrypt_vars.png)
 
 Задание 2*
 
-![Задание 2*](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/decrypt_vars.png)
+![Задание 2*](https://github.com/Loginochka/ansible-hw/blob/main/media/decrypt_vars.png)
 
 Задание 3*
 
-![Задание 3*](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/play_with_encrypt_string.png)
+![Задание 3*](https://github.com/Loginochka/ansible-hw/blob/main/media/play_with_encrypt_string.png)
 
 Задание 4*
 
-![Задание 4*](https://github.com/Loginochka/ansible-hw/blob/main/h-1/media/play_with_fedora.png)
+![Задание 4*](https://github.com/Loginochka/ansible-hw/blob/main/media/play_with_fedora.png)
 
 Задание 5*
 ```bash
