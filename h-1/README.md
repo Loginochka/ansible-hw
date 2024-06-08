@@ -40,7 +40,7 @@
 
 Задание 4
 
-![Задание 4](https://github.com/Loginochka/ansible-hw/blob/mainmedia/play_via_docker.png)
+![Задание 4](https://github.com/Loginochka/ansible-hw/blob/main/media/play_via_docker.png)
 
 Задание 6
 
