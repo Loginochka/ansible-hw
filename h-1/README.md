@@ -64,7 +64,7 @@
 
 Задание 2*
 
-![Задание 2*](https://github.com/Loginochka/ansible-hw/blob/main/media/decrypt_vars.png)
+![Задание 2*](https://github.com/Loginochka/ansible-hw/blob/main/media/encrypt_string.png)
 
 Задание 3*
 
