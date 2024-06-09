@@ -1,0 +1,23 @@
+sources:
+{% for source_id, source_details in vector_config.sources.items() %}
+  {{ source_id }}:
+    type: {{ source_details.type }}
+    format: {{ source_details.format }}
+    interval: {{ source_details.interval}}
+    decoding:
+      codec: {{ source_details.decoding.codec}}
+{% endfor %}
+sinks:
+{% for sinks_id, sinks_details in vector_config.sinks.items() %}
+  {{ sinks_id }}:
+    type: {{ sinks_details.type }}
+    inputs:
+{% for input in sinks_details.inputs %}
+      - {{ input }}
+{% endfor %}
+    endpoint: {{ sinks_details.endpoint }}
+    database: {{ sinks_details.database }}
+    table: {{ sinks_details.table }}
+    compression: {{ sinks_details.compression }}
+    skip_unknown_fields: {{ sinks_details.skip_unknown_fields }}
+{% endfor %}

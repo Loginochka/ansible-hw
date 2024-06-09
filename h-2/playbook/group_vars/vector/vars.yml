@@ -1,0 +1,20 @@
+vector_version: 0.38.0
+vector_config_dir: "/opt/vector_config"
+vector_config:
+  sources:
+    fake_log:
+      type: demo_logs
+      format: syslog
+      interval: 3
+      decoding:
+        codec: syslog
+  sinks:
+    sink_id:
+      type: clickhouse
+      inputs:
+        - fake_log
+      endpoint: http://localhost:8123
+      database: logs
+      table: syslog
+      compression: gzip
+      skip_unknown_fields: true

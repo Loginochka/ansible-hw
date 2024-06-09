@@ -1,0 +1,87 @@
+---
+- name: Install Clickhouse
+  hosts: clickhouse
+  tasks:
+    - block:
+        - name: Get clickhouse distrib
+          ansible.builtin.get_url:
+            url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
+            dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
+            mode: '0644'
+          with_items: "{{ clickhouse_packages }}"
+      rescue:
+        - name: Get clickhouse distrib
+          ansible.builtin.get_url:
+            url: "https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.x86_64.rpm"
+            dest: "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
+            mode: '0644'
+    - name: Install clickhouse packages
+      become: true
+      ansible.builtin.yum:
+        name:
+          - clickhouse-common-static-{{ clickhouse_version }}.rpm
+          - clickhouse-client-{{ clickhouse_version }}.rpm
+          - clickhouse-server-{{ clickhouse_version }}.rpm
+        disable_gpg_check: true
+        use_backend: yum4
+    - name: Copy clickhouse table structure
+      ansible.builtin.copy:
+        src: /home/danil/ansible-hw/h-2/templates/syslog.sql
+        dest: /tmp/syslog.sql
+        mode: "0666"
+    - name: Start clickhouse
+      become: true
+      ansible.builtin.service:
+        name: clickhouse-server
+        state: restarted
+      register: servic_status
+      until: servic_status.status.ActiveState == "active"
+      retries: 15
+      delay: 20
+    - name: Create database
+      ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
+      register: create_db
+      failed_when: create_db.rc != 0 and create_db.rc != 82
+      changed_when: create_db.rc == 0
+    - name: Create table
+      ansible.builtin.shell:
+        "clickhouse-client --multiquery < /tmp/syslog.sql"
+      register: create_tables
+      failed_when: create_tables.rc != 0 and create_tables.rc != 57
+      changed_when: create_tables.rc == 0
+- name: Install Vector
+  hosts: vector
+  handlers:
+    - name: Start vector service
+      become: true
+      ansible.builtin.service:
+        name: vector
+        state: restarted
+        daemon_reload: true
+  tasks:
+    - name: Download vector distrib
+      ansible.builtin.get_url:
+        url: "https://packages.timber.io/vector/{{ vector_version }}/vector-{{ vector_version }}-1.x86_64.rpm"
+        dest: "/tmp/vector-{{ vector_version }}-1.x86_64.rpm"
+        mode: "0644"
+    - name: Install vector
+      ansible.builtin.yum:
+        name:
+          - "/tmp/vector-{{ vector_version }}-1.x86_64.rpm"
+        disable_gpg_check: true
+    - name: Configure vector | Check directory
+      ansible.builtin.file:
+        path: "{{ vector_config_dir }}"
+        state: directory
+        mode: '0644'
+    - name: Configure Vector | Template config
+      ansible.builtin.template:
+        src: /home/danil/ansible-hw/h-2/templates/vector.yml.j2
+        mode: '0644'
+        dest: "{{ vector_config_dir }}/vector.yml"
+    - name: Configure Vector | Template service
+      ansible.builtin.template:
+        src: /home/danil/ansible-hw/h-2/templates/vector.service.j2
+        dest: /etc/systemd/system/vector.service
+        mode: '0644'
+      notify: Start vector service
