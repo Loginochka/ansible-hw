@@ -13,8 +13,8 @@ vector_config:
       type: clickhouse
       inputs:
         - fake_log
-      endpoint: http://localhost:8123
-      database: logs
+      endpoint: "http://{{ hostvars['clickhouse-vm']['ansible_host'] }}:8123"
+      database: log
       table: syslog
       compression: gzip
       skip_unknown_fields: true

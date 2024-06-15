@@ -1,4 +1,4 @@
-CREATE TABLE logs.syslog
+CREATE TABLE log.syslog
 (
     `appname` String,
     `facility` String,

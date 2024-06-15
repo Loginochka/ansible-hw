@@ -1,48 +1,113 @@
 ---
+- name: Disable firewall
+  hosts: all
+  become: true
+  tasks:
+    - name: Disable firewall
+      block:
+        - name: Disable firewall | CentOS
+          ansible.builtin.service:
+            name: firewalld
+            state: stopped
+          when: ansible_facts['distribution'] == 'CentOS'
+        - name: Disable firewall | Ubuntu
+          ansible.builtin.service:
+            name: ufw.service
+            state: stopped
+          when: ansible_facts['distribution'] == 'Ubuntu'
 - name: Install Clickhouse
   hosts: clickhouse
+  become: true
   tasks:
-    - block:
-        - name: Get clickhouse distrib
+    - name: Configure Clickhouse | yum
+      when: ansible_facts['distribution'] == 'CentOS'
+      block:
+        - name: Download Clickhouse | yum
+          block:
+            - name: Get clickhouse distrib | yum
+              ansible.builtin.get_url:
+                url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
+                dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
+                mode: '0644'
+              with_items: "{{ clickhouse_packages }}"
+          rescue:
+            - name: Get clickhouse distrib fallback | yum
+              ansible.builtin.get_url:
+                url: "https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.x86_64.rpm"
+                dest: "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
+                mode: '0644'
+        - name: Install clickhouse packages | yum
+          become: true
+          ansible.builtin.dnf:
+            name:
+              - "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
+              - "./clickhouse-client-{{ clickhouse_version }}.rpm"
+              - "./clickhouse-server-{{ clickhouse_version }}.rpm"
+            disable_gpg_check: true
+    - name: Configure Clickhouse | apt
+      when: ansible_facts['distribution'] == 'Ubuntu'
+      block:
+        - name: Add clickhouse gpg
+          ansible.builtin.apt_key:
+            url: https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key
+            keyring: /usr/share/keyrings/clickhouse-keyring.gpg
+        - name: Update dustr
+          ansible.builtin.apt:
+            update_cache: true
+            upgrade: full
+            cache_valid_time: 3600
+        - name: Download Clickhouse | clickhouse-client | apt
           ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
-            dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
+            url: "https://packages.clickhouse.com/deb/pool/main/c/clickhouse-client/clickhouse-client_{{ clickhouse_version }}_all.deb"
+            dest: "./clickhouse-client_{{ clickhouse_version }}_all.deb"
             mode: '0644'
-          with_items: "{{ clickhouse_packages }}"
-      rescue:
-        - name: Get clickhouse distrib
+        - name: Download Clickhouse | clickhouse-common-static | apt
           ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.x86_64.rpm"
-            dest: "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
+            url: "https://packages.clickhouse.com/deb/pool/main/c/clickhouse-common-static/clickhouse-common-static_{{ clickhouse_version }}_amd64.deb"
+            dest: "./clickhouse-common-static_22.3.3.44_amd64.deb"
             mode: '0644'
-    - name: Install clickhouse packages
-      become: true
-      ansible.builtin.yum:
-        name:
-          - clickhouse-common-static-{{ clickhouse_version }}.rpm
-          - clickhouse-client-{{ clickhouse_version }}.rpm
-          - clickhouse-server-{{ clickhouse_version }}.rpm
-        disable_gpg_check: true
-        use_backend: yum4
+        - name: Download Clickhouse | clickhouse-server | apt
+          ansible.builtin.get_url:
+            url: "https://packages.clickhouse.com/deb/pool/main/c/clickhouse-server/clickhouse-server_{{ clickhouse_version }}_all.deb"
+            dest: "./clickhouse-server_{{ clickhouse_version }}_all.deb"
+            mode: '0644'
+        - name: Install clickhouse packages | apt
+          ansible.builtin.apt:
+            name:
+              - "clickhouse-common-static_22.3.3.44_amd64.deb"
+              - "clickhouse-client_{{ clickhouse_version }}_all.deb"
+              - "clickhouse-server_{{ clickhouse_version }}_all.deb"
+    - name: Change clickhouse config
+      ansible.builtin.template:
+        src: /home/danil/ansible-hw/h-2/templates/config.xml.j2
+        dest: /etc/clickhouse-server/config.xml
+        mode: "0400"
+        owner: clickhouse
+        group: clickhouse
     - name: Copy clickhouse table structure
       ansible.builtin.copy:
-        src: /home/danil/ansible-hw/h-2/templates/syslog.sql
+        src: /home/danil/ansible-hw/h-2/files/syslog.sql
         dest: /tmp/syslog.sql
         mode: "0666"
-    - name: Start clickhouse
-      become: true
+    - name: Start clickhouse-server
       ansible.builtin.service:
         name: clickhouse-server
-        state: restarted
-      register: servic_status
-      until: servic_status.status.ActiveState == "active"
-      retries: 15
-      delay: 20
+        state: started
+        enabled: true
+    - name: Check DB connect
+      ansible.builtin.uri:
+        url: http://localhost:8123/ping
+        return_content: true
+        validate_certs: false
+      until: db_status.status == 200
+      retries: 5
+      delay: 10
+      register: db_status
     - name: Create database
-      ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
+      ansible.builtin.command: "clickhouse-client -q 'create database log;'"
       register: create_db
       failed_when: create_db.rc != 0 and create_db.rc != 82
-      changed_when: create_db.rc == 0
+      changed_when: create_db.rc == 0 and db_status.content == "Ok. "
     - name: Create table
       ansible.builtin.shell:
         "clickhouse-client --multiquery < /tmp/syslog.sql"
@@ -51,6 +116,7 @@
       changed_when: create_tables.rc == 0
 - name: Install Vector
   hosts: vector
+  become: true
   handlers:
     - name: Start vector service
       become: true
@@ -59,16 +125,31 @@
         state: restarted
         daemon_reload: true
   tasks:
-    - name: Download vector distrib
-      ansible.builtin.get_url:
-        url: "https://packages.timber.io/vector/{{ vector_version }}/vector-{{ vector_version }}-1.x86_64.rpm"
-        dest: "/tmp/vector-{{ vector_version }}-1.x86_64.rpm"
-        mode: "0644"
-    - name: Install vector
-      ansible.builtin.yum:
-        name:
-          - "/tmp/vector-{{ vector_version }}-1.x86_64.rpm"
-        disable_gpg_check: true
+    - name: Configure Vector
+      block:
+        - name: Download vector distrib | yum
+          ansible.builtin.get_url:
+            url: "https://packages.timber.io/vector/{{ vector_version }}/vector-{{ vector_version }}-1.x86_64.rpm"
+            dest: "/tmp/vector-{{ vector_version }}-1.x86_64.rpm"
+            mode: "0644"
+          when: ansible_facts['distribution'] == 'CentOS'
+        - name: Install vector | yum
+          ansible.builtin.dnf:
+            name:
+              - "/tmp/vector-{{ vector_version }}-1.x86_64.rpm"
+            disable_gpg_check: true
+          when: ansible_facts['distribution'] == 'CentOS'
+        - name: Download vector distrib | apt
+          ansible.builtin.get_url:
+            url: "https://packages.timber.io/vector/{{ vector_version }}/vector_{{ vector_version }}-1_amd64.deb"
+            dest: "./vector_{{ vector_version }}-1_amd64.deb"
+            mode: "0644"
+          when: ansible_facts['distribution'] == 'Ubuntu'
+        - name: Install vector | apt
+          ansible.builtin.apt:
+            name:
+              - vector_{{ vector_version }}-1_amd64.deb
+          when: ansible_facts['distribution'] == 'Ubuntu'
     - name: Configure vector | Check directory
       ansible.builtin.file:
         path: "{{ vector_config_dir }}"
@@ -85,3 +166,63 @@
         dest: /etc/systemd/system/vector.service
         mode: '0644'
       notify: Start vector service
+- name: Configure Lighthouse
+  hosts: lighthouse
+  become: true
+  handlers:
+    - name: Start nginx service
+      become: true
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+        daemon_reload: true
+  tasks:
+    - name: Install Lighthouse
+      when: ansible_facts['distribution'] == 'CentOS'
+      block:
+        - name: Change mirror list | comment
+          ansible.builtin.lineinfile:
+            path: "{{ item }}"
+            regexp: '^mirrorlist='
+            line: '#mirrorlist='
+            state: present
+          with_fileglob:
+            - /etc/yum.repos.d/CentOS-*
+        - name: Change mirror list | replace
+          ansible.builtin.lineinfile:
+            path: "{{ item }}"
+            regexp: '^#baseurl=http://mirror.centos.org'
+            line: 'baseurl=http://vault.centos.org'
+            state: present
+          with_fileglob:
+            - /etc/yum.repos.d/CentOS-*
+    - name: Download required packages
+      block:
+        - name: Download required packages | yum
+          ansible.builtin.dnf:
+            name:
+              - git
+              - nginx
+            state: present
+          register: git_installed
+          when: ansible_facts['distribution'] == 'CentOS'
+        - name: Download required packages | apt
+          ansible.builtin.apt:
+            name:
+              - git
+              - nginx
+            state: present
+          register: git_installed
+          when: ansible_facts['distribution'] == 'Ubuntu'
+    - name: Download Lighthouse
+      ansible.builtin.git:
+        repo: https://github.com/VKCOM/lighthouse.git
+        dest: /usr/share/nginx/html/lighthouse
+        version: master
+        force: true
+    - name: Change nginx config | replace root html
+      ansible.builtin.template:
+        src: /home/danil/ansible-hw/h-2/templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        mode: "0666"
+      notify: Start nginx service

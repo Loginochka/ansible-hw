@@ -1,8 +1,8 @@
-## Ansible Playbook для запуска Clickhouse + Vector
+## Ansible Playbook для запуска Clickhouse + Vector + lighthouse
 
 ### Особоенности:
 * Поддерживает CentOS7/9
-* Установка и настройка тестовой конфигурации Clickhouse и Vector
+* Установка и настройка тестовой конфигурации Clickhouse, Vector, lighthouse
 * Готовый sql dump под syslog *nix 
 * Гибкая настройка конфига Vector посредством Jinja template
 ---
@@ -34,11 +34,29 @@ vector_version: 0.38.0
 endpoint: http://localhost:8123
 ```
 
+В файле **[lighthouse/vars.yml](https://github.com/Loginochka/ansible-hw/blob/main/h-2/playbook/group_vars/lighthouse/vars.yml)** укажите IP\порт, который будет слушать веб-сервер
+```YML
+nginx_address: 0.0.0.0:8080
+```
+
 ## Play
 
 #
     ansible-playbook site.yml -i inventory/prod.yml
-**Note**: После выполнения playbook Vector сразу начнет писать лог в БД 
+**Note**: После выполнения playbook Vector сразу начнет писать лог в БД
+
+Веб-интерфейс lighthouse будет находиться по адресу, который был указан в файле **lighthouse/vars.yml**
+
+Сервис предложит вам ввести URL clickhouse.
+Например
+```
+http://127.0.0.1:8123/?user=default"
+```
+127.0.0.1:8123 - адрес по умолчанию, который слушает clickhouse
+```
+user=default
+```
+пользователь по умолчанию в clickhouse
 
 ## Документация 
 
@@ -48,15 +66,3 @@ endpoint: http://localhost:8123
 
 ## Лицензия 
 This project is licensed under the [MIT License](https://github.com/Loginochka/ansible-hw/blob/main/LICENSE).
-
-
----
-## Результат выполнения команд 5-8
-
-![6](https://github.com/Loginochka/ansible-hw/blob/main/media/play_flag_check.png)
-
-![7.1](https://github.com/Loginochka/ansible-hw/blob/main/media/play_flag_dif_p1.png)
-
-![7.2](https://github.com/Loginochka/ansible-hw/blob/main/media/play_flag_dif_p2.png)
-
-![8](https://github.com/Loginochka/ansible-hw/blob/main/media/play_flag_dif_again.png)
