@@ -1,0 +1,29 @@
+---
+- name: Disable firewall
+  hosts: all
+  become: true
+  tasks:
+    - name: Disable firewall
+      block:
+        - name: Disable firewall | CentOS
+          ansible.builtin.service:
+            name: firewalld
+            state: stopped
+          when: ansible_facts['distribution'] == 'CentOS'
+        - name: Disable firewall | Ubuntu
+          ansible.builtin.service:
+            name: ufw.service
+            state: stopped
+          when: ansible_facts['distribution'] == 'Ubuntu'
+- name: Install Clickhouse
+  hosts: clickhouse
+  roles:
+    - clickhouse-role
+- name: Install vector from role
+  hosts: vector
+  roles:
+    - vector-role
+- name: Install lighthouse grom role
+  hosts: lighthouse
+  roles:
+    - lighthouse-role
